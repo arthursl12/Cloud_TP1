@@ -1,0 +1,77 @@
+import pyspark
+import os
+import subprocess
+import time
+import datetime
+import operator
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+
+from subprocess import Popen, PIPE
+from pyspark.sql import SparkSession
+from collections import defaultdict
+from pyspark.sql.window import Window
+
+import pyspark.sql.functions as F
+from pyspark.sql.functions import col, asc,desc
+from pyspark.sql.functions import col, max as max_, min as min_, first, when
+from pyspark.sql.functions import trunc, avg, countDistinct
+from pyspark.sql.functions import dayofmonth,date_trunc,to_date,current_timestamp
+
+spark = SparkSession.builder.appName("Activity3").getOrCreate()
+
+# Generate full filenames
+hdfs_prefix = 'hdfs://localhost:54310'
+# hdfs_prefix = 'hdfs://localhost:9000'
+prefix = f'{hdfs_prefix}/datasets/covid/'
+filename_prefix = prefix+'part-'
+filename_suffix = '-5f4af8d5-3171-48e9-9a56-c5a7c7a84cc3-c000.json'
+
+filenames = []
+for i in range(2):
+    filenames.append(filename_prefix+f"{i:05d}"+filename_suffix)
+print(filenames)
+# Read all into a dataframe
+df = spark.read.json(filenames)
+# Convert datetime string to datetime type
+df = df.withColumn("created_at", col("created_at").cast("timestamp"))
+
+# Find how many (distinct) users (not tweets) used the tag each day
+evolution = (
+    df 
+        .select(date_trunc('day', df.created_at).alias('day'),"screen_name")
+        .where(col("text").contains("#covid"))
+        .where((df.country_code == "US") | (df.place_type == "US"))
+        .groupBy("day")
+        .agg(countDistinct("screen_name").alias("count"))
+)
+
+# Weekly rolling average window
+w = (Window()
+     .orderBy("day")
+     .rowsBetween(-7, 0))
+
+rolling = evolution.withColumn('rolling_average', avg('count').over(w))
+rolling = rolling.select("day","rolling_average")
+
+# Write CSV
+rolling.coalesce(1).write.csv("task3")
+
+# Convert last dataframe into dictionary for plotting
+rows = [list(row) for row in rolling.collect()]
+timeseries = {}
+for [date, avg] in rows:
+    timeseries[date] = avg
+
+# Generate plot    
+plt.figure(figsize=(30,10))
+plt.title("Rolling Average - Users tweeting '#covid' in April 2020", fontsize=30)
+plt.plot(timeseries.keys(),timeseries.values(),marker="o")
+plt.ylabel("Rolling Average",fontsize=20)
+plt.yticks(fontsize=20)
+ax = plt.gca()
+myFmt = mdates.DateFormatter('%Y-%m-%d')
+ax.xaxis.set_major_formatter(myFmt)
+plt.xlabel("Date",fontsize=20)
+plt.xticks(fontsize=20, rotation=0)
+plt.savefig('rolling_average.png', bbox_inches='tight')
