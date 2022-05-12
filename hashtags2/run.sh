@@ -8,7 +8,8 @@ rm -rf *.csv
 
 # Compile and Run
 export HADOOP_CP=$(hadoop classpath)
-javac --release 8 -cp "$HADOOP_CP:./json-simple-1.1.1.jar:." -d classes TextArrayWritable.java IntTextArrayWritable.java Hashtags.java 
+# javac --release 8 -cp "$HADOOP_CP:./json-simple-1.1.1.jar:." -d classes TextArrayWritable.java IntTextArrayWritable.java Hashtags.java 
+javac -cp "$HADOOP_CP:./json-simple-1.1.1.jar:." -d classes TextArrayWritable.java IntTextArrayWritable.java Hashtags.java 
 jar -cvf Hashtags.jar -C classes/ .
 hdfs dfs -rm -r -f /user/$USER/actv1
 hadoop jar Hashtags.jar hashtags.Hashtags /datasets/covid /user/$USER/actv1
