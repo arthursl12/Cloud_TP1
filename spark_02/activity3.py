@@ -64,7 +64,7 @@ for [date, avg] in rows:
     timeseries[date] = avg
 
 # Generate plot    
-plt.figure(figsize=(30,10))
+# plt.figure(figsize=(30,10))
 plt.title("Rolling Average - Users tweeting '#covid' in April 2020", fontsize=30)
 plt.plot(timeseries.keys(),timeseries.values(),marker="o")
 plt.ylabel("Rolling Average",fontsize=20)
