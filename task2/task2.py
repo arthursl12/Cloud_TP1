@@ -12,26 +12,28 @@ from pyspark.sql.functions import col, asc,desc
 import pyspark.sql.functions as F
 from pyspark.sql.functions import col, max as max_, min as min_, first, when
 
-print("IMPORTS")
+# Create spark session
+USER = 'arthurlima'  # Username to use in HDFS
 spark = SparkSession.builder \
     .master("yarn")  \
     .appName("Activity2") \
     .getOrCreate()
-print("SPARKSESSION")
+
+print("HERE")
 
 # Get list of files from hdfs
-# hdfs_prefix = 'hdfs://localhost:54310'
-hdfs_prefix = 'hdfs://localhost:9000'
+hdfs_prefix = 'hdfs://localhost:54310'; N=2
+# hdfs_prefix = 'hdfs://localhost:9000'; N=31
 prefix = f'{hdfs_prefix}/datasets/covid/'
 filename_prefix = prefix+'part-'
 filename_suffix = '-5f4af8d5-3171-48e9-9a56-c5a7c7a84cc3-c000.json'
 
-filenames = []
-for i in range(31):
-    filenames.append(filename_prefix+f"{i:05d}"+filename_suffix)
-print("READ")
 # Read all into a dataframe
+filenames = []
+for i in range(N):
+    filenames.append(filename_prefix+f"{i:05d}"+filename_suffix)
 df = spark.read.json(filenames)
+
 # Convert datetime string to datetime type
 df = df.withColumn("created_at", col("created_at").cast("timestamp"))
 
@@ -43,7 +45,6 @@ actives = (
         .orderBy(col("count").desc()) \
         .limit(1000) \
 )
-print("ACTIVES")
 
 # How many followers at the start of dataset, for verified accounts
 fol_start = \
@@ -97,10 +98,8 @@ delta_df \
     .join(actives, on="screen_name", how="left") \
     .select("screen_name", col("Result").alias("Foll. Gained"), when(col("count").isNotNull(), 1).otherwise(0).alias("IsActive")) \
 )
-print("RESULT")
 
 
-result.coalesce(1).write.csv(hdfs_prefix+"/user/arthurlima/actv2/run002")
-print("PRINT")
+result.coalesce(1).write.csv(hdfs_prefix+"/user/"+USER+"/task2")
 
 spark.sparkContext.stop()
