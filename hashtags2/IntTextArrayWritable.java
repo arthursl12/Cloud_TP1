@@ -5,18 +5,6 @@ import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.IntWritable;
-
-
-
-/* The TextArrayWritable class allows sending a list of MapReduce Text
- * objects from a Mapper to a Reducer:
- *     ArrayList<String> hashtags = new ArrayList<String>();
- *     // fill in hashtags
- *     String[] hashtagsArray = new String[hashtags.size()];
- *     hashtagsArray = hashtags.toArray(hashtagsArray);
- *     TextArrayWritable hashtagsW = new TextArrayWritable(hashtagsArray);
- *     // can then send hashtagsW from Map to Reduce
- */
 public class IntTextArrayWritable extends ArrayWritable {
     private IntWritable counter = new IntWritable();
 
@@ -57,9 +45,5 @@ public class IntTextArrayWritable extends ArrayWritable {
             }
         }
         return big_str;
-
-        // return Arrays.toString(values);  // Imprime com colchetes (não usar)
-        // return "TextArrayWritable [values="
-        //   + values + "]";
     }
 }

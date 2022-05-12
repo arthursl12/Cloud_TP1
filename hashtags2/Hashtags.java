@@ -13,6 +13,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.util.Arrays;
+import java.util.regex.Pattern;
 
 
 // Hadoop and MapReduce
@@ -73,12 +74,16 @@ public class Hashtags {
                 if(word.charAt(0) == '#'){
                     // This is a hashtag
 
-                    // Filter last character punctuation
-                    while(isPunctuaction(word.charAt(word.length()-1))){
+                    // Filter out last character punctuation
+                    while(word.length() > 1 && isPunctuaction(word.charAt(word.length()-1))){
+                        // System.out.printf("Filtering #: %s\n", word);
                         word = removeLastChar(word);
                     }
+                    // System.out.printf("Filtered #: %s\n", word);
                     if (word.length() > 1){
-                        context.write(new Text(word), one);
+                        // Remove leading '#' symbol
+                        String tag_without_symbol = word.substring(1);
+                        context.write(new Text(tag_without_symbol), one);
                     } 
                 }   
             }
@@ -87,9 +92,16 @@ public class Hashtags {
             //returns the string after removing the last character  
             return s.substring(0, s.length() - 1);  
         }
-        private boolean isPunctuaction(char c){  
-            //returns if the char is a punctuation
-            return ((c == '.') || (c == ',') || (c == '?') || (c == ':'));
+        private boolean isPunctuaction(char c){
+            //returns if the char is a punctuation (except underline)
+            String c_str = Character.toString(c);
+            if (c == '_'){
+                return false;
+            }else if (Pattern.matches("[\\p{Punct}\\p{IsPunctuation}]", c_str)){
+                return true;
+            }else{
+                return false;
+            }
         }      
     }
 
@@ -164,9 +176,9 @@ public class Hashtags {
                 String word = itr.nextToken();
                 if(word.charAt(0) == '#'){
                     // This is a hashtag
+                    word = word.substring(1);
                     if (popular_tags.containsKey(word)){
                         // This is a popular hashtag
-                        // System.out.printf("HERE #: %s\n", word.toString());
                         all_hashtags.add(word);
                     }
                 }   
@@ -180,10 +192,7 @@ public class Hashtags {
             while(it.hasNext()){
                 String curr_hashtag = it.next();
                 Text hashtag_text = new Text(curr_hashtag);
-                // System.out.printf("HERE1 #: %s\n",hashtag_text.toString());
                 context.write(hashtag_text, hashtagsW);
-                // System.out.printf("HERE2 #: %s\n",hashtag_text.toString());
-
             }
         }
 
@@ -214,11 +223,8 @@ public class Hashtags {
         }
         public void reduce(Text key_hashtag, Iterable<TextArrayWritable> all_related_hashtags, Context ctx)
                 throws IOException, InterruptedException {
-            // System.out.printf("Reducer2 for: %s\n",key_hashtag.toString());
-            
             Set<String> all_hashtags = new HashSet<String>();
             for (TextArrayWritable array : all_related_hashtags) {
-                // System.out.printf("Loop2 #: %s\n",key_hashtag.toString());
                 String[] some_hashtags = array.toStrings();
                 for (String s : some_hashtags){
                     if (s != key_hashtag.toString()){
@@ -226,45 +232,17 @@ public class Hashtags {
                     }
                 }
             }
-
-           
-
-            // writable_result = new IntWritable(sum);
-            // writable_result.set(sum);
-            // ctx.write(key_hashtag, writable_result);
-            // mos.write("popularity", key_hashtag, popularity);
-            
             
             // Convert set to array
             String[] hashtagsArray = new String[all_hashtags.size()];
             hashtagsArray = all_hashtags.toArray(hashtagsArray);
-            // System.out.printf("\tArray_size=%d\n",all_hashtags.size());
-            // System.out.printf("\tArray_size=%d\n",hashtagsArray.length);
-            // System.out.printf("\tPopularity=%d\n",popular_tags.get(key_hashtag.toString()));
-            // System.out.println(Arrays.asList(popular_tags));
             writable_result = new IntTextArrayWritable(popular_tags.get(key_hashtag.toString()), hashtagsArray);
-
-
-
-
-
-            // TextArrayWritable hashtagsW = new TextArrayWritable(hashtagsArray);
-            // writable_result = new TextArrayWritable(hashtagsArray);
             ctx.write(key_hashtag, writable_result);
-
-            // result.set(hashtagsW);
-
-
-
-            // ctx.write(key, result);
-            // mos.write("popularity", key_hashtag, popularity);
-            // mos.write("correlatedtags", key_hashtag, hashtagsW);
-            
-            
         }
     }
 
     public static void main(String[] args) throws Exception {
+        // 2nd Job: hashtag count
         Configuration conf = new Configuration();
         conf.set("mapred.textoutputformat.separator", ",");
         Job job1 = Job.getInstance(conf, "Actv1: count popular tags");
@@ -283,9 +261,9 @@ public class Hashtags {
         JobConf jobconf = new JobConf();
         
         conf.set("mapred.textoutputformat.separator", ",");
-        conf.set("intermediate.result.location", (new URI("/user/arthurlima/actv1/out01/tmp/part-r-00000").toString()));
+        conf.set("intermediate.result.location", (new URI(args[1]+"/tmp/part-r-00000").toString()));
         Job job2 = Job.getInstance(conf, "Actv1: count related hashtags");
-        job2.addCacheArchive(new URI("/user/arthurlima/actv1/out01/tmp/part-r-00000"));
+        job2.addCacheArchive(new URI(args[1]+"/tmp/part-r-00000"));
         job2.setJarByClass(Hashtags.class);
         job2.setMapperClass(TokenizerMapperFilter.class);
         job2.setReducerClass(SumAndCorrelatedReducer.class);
@@ -296,7 +274,6 @@ public class Hashtags {
         FileOutputFormat.setOutputPath(job2, new Path(args[1]+"/result"));
         System.exit(job2.waitForCompletion(true) ? 0 : 1);
     }
-
 }
 
 

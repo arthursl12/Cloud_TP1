@@ -42,9 +42,5 @@ public class TextArrayWritable extends ArrayWritable {
             big_str += values[i].toString() + ", ";
         }
         return big_str;
-
-        // return Arrays.toString(values);  // Imprime com colchetes (não usar)
-        // return "TextArrayWritable [values="
-        //   + values + "]";
     }
 }
