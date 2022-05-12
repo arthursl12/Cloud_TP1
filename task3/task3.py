@@ -26,8 +26,8 @@ spark = SparkSession.builder \
     .getOrCreate()
 
 # Generate full filenames
-hdfs_prefix = 'hdfs://localhost:54310'; N=2
-# hdfs_prefix = 'hdfs://localhost:9000'; N=31
+# hdfs_prefix = 'hdfs://localhost:54310'; N=2
+hdfs_prefix = 'hdfs://localhost:9000'; N=31
 prefix = f'{hdfs_prefix}/datasets/covid/'
 filename_prefix = prefix+'part-'
 filename_suffix = '-5f4af8d5-3171-48e9-9a56-c5a7c7a84cc3-c000.json'
